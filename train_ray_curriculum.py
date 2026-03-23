@@ -1,12 +1,11 @@
-import yaml
-
 import ray
+import yaml
 from ray import tune
 from ray.rllib.agents.callbacks import DefaultCallbacks
 from soccer_twos import EnvType
 
-from utils import create_rllib_env, sample_pos_vel, sample_player
-
+from utils import (create_rllib_env, create_shaped_rllib_env, sample_player,
+                   sample_pos_vel)
 
 NUM_ENVS_PER_WORKER = 3
 
@@ -50,8 +49,8 @@ class CurriculumUpdateCallback(DefaultCallbacks):
 if __name__ == "__main__":
     ray.init()
 
-    tune.registry.register_env("Soccer", create_rllib_env)
-    temp_env = create_rllib_env()
+    tune.registry.register_env("Soccer", create_shaped_rllib_env)
+    temp_env = create_shaped_rllib_env()
     obs_space = temp_env.observation_space
     act_space = temp_env.action_space
     temp_env.close()
@@ -61,8 +60,8 @@ if __name__ == "__main__":
         name="PPO_curriculum",
         config={
             # system settings
-            "num_gpus": 1,
-            "num_workers": 14,
+            "num_gpus": 0,
+            "num_workers": 2,
             "num_envs_per_worker": NUM_ENVS_PER_WORKER,
             "log_level": "INFO",
             "framework": "torch",
@@ -75,25 +74,23 @@ if __name__ == "__main__":
                 "multiagent": False,
                 "flatten_branched": True,
                 "single_player": True,
-                "opponent_policy": lambda *_: 0,
             },
             "model": {
                 "vf_share_layers": True,
-                "fcnet_hiddens": [256, 256],
-                "fcnet_activation": "relu",
+                "fcnet_hiddens": [512, 512],
             },
             "rollout_fragment_length": 5000,
             "batch_mode": "complete_episodes",
         },
         stop={
-            "timesteps_total": 15000000,
-            "time_total_s": 7200, # 2h
-            "episode_reward_mean": 1.9,
+            # "timesteps_total": 15000000,
+            "time_total_s": 10 * 3600, # 2h
+            # "episode_reward_mean": 1.9,
         },
         checkpoint_freq=5,
         checkpoint_at_end=True,
         local_dir="./ray_results",
-        # restore="./ray_results/PPO_selfplay_twos_2/PPO_Soccer_a8b44_00000_0_2021-09-18_11-13-55/checkpoint_000600/checkpoint-600",
+        # restore="ray_results/PPO_curriculum/PPO_Soccer_39345_00000_0_2026-03-18_14-28-13/checkpoint_000525/checkpoint-525",
     )
 
     # Gets best trial based on max accuracy across all training iterations.
@@ -104,4 +101,5 @@ if __name__ == "__main__":
         trial=best_trial, metric="episode_reward_mean", mode="max"
     )
     print(best_checkpoint)
+    print("Done training")
     print("Done training")

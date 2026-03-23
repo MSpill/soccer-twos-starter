@@ -1,8 +1,8 @@
 import os
 
-from gym_unity.envs import ActionFlattener
 import numpy as np
 import torch
+from gym_unity.envs import ActionFlattener
 from soccer_twos import AgentInterface
 
 from .model import QNetwork
@@ -14,6 +14,8 @@ class TeamAgent(AgentInterface):
     """
 
     def __init__(self, env):
+        super().__init__()
+        print("yooooo")
         # use flattened, Discrete actions instead of default MultiDiscrete
         self.flattener = ActionFlattener(env.action_space.nvec)
         # this agent's model works with team_vs_policy variation of the env

@@ -1,12 +1,24 @@
+import pickle
+from pathlib import Path
+
 import ray
 from ray import tune
+from ray.rllib.agents.callbacks import DefaultCallbacks
 from soccer_twos import EnvType
 
 from utils import create_rllib_env
 
-
 NUM_ENVS_PER_WORKER = 3
 
+
+
+class SaveWeightsCallback(DefaultCallbacks):
+    def on_train_result(self, **info):
+        path = Path("/Users/matthewspillman/Documents/_5th/Spring/Deep Reinforcement Learning/soccer-twos-starter/striker_agent/weights/striker.pkl")
+        path.parent.mkdir(parents=True, exist_ok=True)
+        with path.open("wb") as f:
+            pickle.dump(info["trainer"].get_weights(["default_policy"])["default_policy"], f)
+            print('saved weights!')
 
 if __name__ == "__main__":
     ray.init()
@@ -18,11 +30,12 @@ if __name__ == "__main__":
         name="PPO_SP",
         config={
             # system settings
-            "num_gpus": 1,
-            "num_workers": 8,
+            "num_gpus": 0,
+            "num_workers": 2,
             "num_envs_per_worker": NUM_ENVS_PER_WORKER,
             "log_level": "INFO",
             "framework": "torch",
+            "callbacks": SaveWeightsCallback,
             # RL setup
             "env": "Soccer",
             "env_config": {
@@ -41,13 +54,13 @@ if __name__ == "__main__":
             "train_batch_size": 12000,
         },
         stop={
-            "timesteps_total": 20000000,  # 15M
-            # "time_total_s": 14400, # 4h
+            # "timesteps_total": 20000000,  # 15M
+            "time_total_s": 10 * 3600, # 4h
         },
         checkpoint_freq=100,
         checkpoint_at_end=True,
         local_dir="./ray_results",
-        # restore="./ray_results/PPO_selfplay_1/PPO_Soccer_ID/checkpoint_00X/checkpoint-X",
+        restore="ray_results/PPO_SP/PPO_Soccer_e492d_00000_0_2026-03-17_22-40-57/checkpoint_000869/checkpoint-869",
     )
 
     # Gets best trial based on max accuracy across all training iterations.
@@ -58,4 +71,7 @@ if __name__ == "__main__":
         trial=best_trial, metric="episode_reward_mean", mode="max"
     )
     print(best_checkpoint)
+    print("Done training")
+    print(best_checkpoint)
+    print("Done training")
     print("Done training")
