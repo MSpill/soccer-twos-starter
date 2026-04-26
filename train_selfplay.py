@@ -48,6 +48,7 @@ def policy_mapping_fn(agent_id, *args, **kwargs):
 
 have_changed_weights = True
 num_weight_updates = 0
+running_reward_avg = 0.0
 
 class CurriculumUpdateCallback(DefaultCallbacks):
     def on_train_result(self, **info):
@@ -61,7 +62,7 @@ class CurriculumUpdateCallback(DefaultCallbacks):
         with path.open("wb") as f:
             pickle.dump(info["trainer"].get_weights(["goalie"])["goalie"], f)
             print('saved goalie weights!')
-        global have_changed_weights, num_weight_updates
+        global have_changed_weights, num_weight_updates, running_reward_avg
         if not have_changed_weights:
             print('trying to update weights')
             trainer = info["trainer"]
@@ -122,7 +123,10 @@ class CurriculumUpdateCallback(DefaultCallbacks):
             # trainer.set_weights({"goalie": weights})
             # trainer.set_weights({"opponent_goalie": weights})
             have_changed_weights = True
-        if info["result"]["policy_reward_mean"]["striker"] > 0.5:
+        running_reward_avg = 0.8 * running_reward_avg + 0.2 * info["result"]["policy_reward_mean"]["striker"]
+        print(f'running avg is {running_reward_avg}')
+        if running_reward_avg > 0.35:
+            running_reward_avg = 0
             print("---- Updating opponents!!! ----")
             trainer = info["trainer"]
             trainer.set_weights(
@@ -145,7 +149,7 @@ if __name__ == "__main__":
     temp_env.close()
 
     analysis = tune.run(
-        PPOTrainerWithInitWeights,
+        "PPO",
         name="PPO_selfplay_new",
         config={
             # system settings
@@ -178,13 +182,17 @@ if __name__ == "__main__":
             },
             "train_batch_size": 16000,
             "batch_mode": "complete_episodes",
-            "striker_path": "/Users/matthewspillman/Documents/_5th/Spring/Deep Reinforcement Learning/soccer-twos-starter/striker_agent/weights/striker.pkl",
-            "goalie_path": "/Users/matthewspillman/Documents/_5th/Spring/Deep Reinforcement Learning/soccer-twos-starter/striker_agent/weights/goalie_2.pkl"
+            # "striker_path": "/Users/matthewspillman/Documents/_5th/Spring/Deep Reinforcement Learning/soccer-twos-starter/striker_agent/weights/striker.pkl",
+            # "goalie_path": "/Users/matthewspillman/Documents/_5th/Spring/Deep Reinforcement Learning/soccer-twos-starter/striker_agent/weights/goalie_2.pkl"
         },
-        stop={"time_total_s": 3600 * 38},  # 2h
+        stop={"time_total_s": 3600 * 216},  # 2h
         checkpoint_freq=20,
         checkpoint_at_end=True,
         local_dir="./ray_results",
+        restore="/Users/matthewspillman/Documents/_5th/Spring/Deep Reinforcement Learning/soccer-twos-starter/ray_results/PPO_selfplay_new/PPO_Soccer_6faba_00000_0_2026-03-28_09-23-21/checkpoint_003000/checkpoint-3000"
+        # restore="/Users/mathewspillman/Documents/_5th/Spring/Deep Reinforcement Learning/soccer-twos-starter/ray_results/PPO_selfplay_new/PPO_Soccer_ac4f3_00000_0_2026-03-25_11-44-36/checkpoint_002320/checkpoint-2320"
+        # restore="/Users/matthewspillman/Documents/_5th/Spring/Deep Reinforcement Learning/soccer-twos-starter/ray_results/PPO_selfplay_new/PPO_Soccer_7fbbb_00000_0_2026-03-23_23-49-46/checkpoint_000520/checkpoint-520"
+        # restore="/Users/matthewspillman/Documents/_5th/Spring/Deep Reinforcement Learning/soccer-twos-starter/ray_results/PPO_selfplay_new/PPO_Soccer_be6b7_00000_0_2026-03-23_17-24-58/checkpoint_000160/checkpoint-160"
         # restore="ray_results/PPO_selfplay_rec/PPO_Soccer_419fc_00000_0_2026-03-21_17-31-01/checkpoint_000160/checkpoint-160"
         # restore="ray_results/PPO_selfplay_rec/PPO_Soccer_a79f3_00000_0_2026-03-21_17-12-23/checkpoint_000004/checkpoint-4"
         # restore="ray_results/PPO_selfplay_rec/PPO_Soccer_15248_00000_0_2026-03-20_16-19-22/checkpoint_003753/checkpoint-3753"
