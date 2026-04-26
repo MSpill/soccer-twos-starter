@@ -21,8 +21,8 @@ class TeamAgent(AgentInterface):
     def __init__(self, env):
         super().__init__()
         print("initializing")
-        self.striker = MyModel("striker_agent/weights/striker.pkl")
-        self.goalie = MyModel("striker_agent/weights/goalie_2.pkl")
+        self.striker = MyModel("TEAM69_AGENT/weights/striker_2.pkl")
+        self.goalie = MyModel("TEAM69_AGENT/weights/goalie_3.pkl")
         # if not ray.is_initialized():
         #     ray.init()
         # tune.registry.register_env("Soccer", create_rllib_env)
@@ -60,7 +60,7 @@ class TeamAgent(AgentInterface):
         actions = {}
         actions[0] = self.flattener.lookup_action(self.striker.get_action(observation[0]))
         actions[1] = self.flattener.lookup_action(self.goalie.get_action(observation[1]))
-        # actions[0] = [0, 0, 0]
+        # actions[1] = [0, 0, 0]
         return actions
 
 
